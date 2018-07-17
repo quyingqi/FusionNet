@@ -22,18 +22,23 @@ class FusionNetReader(nn.Module):
         fnlayers.set_my_dropout_prob(args['encoder_dropout'])
         fnlayers.set_seq_dropout(True)
 
+        '''
         self.embedding = Embeddings(word_vec_size=args['word_vec_size'],
                                     dicts=dicts,
                                     feature_dicts=feat_dicts,
                                     feature_dims=feat_dims)
+        '''
+        self.embedding = nn.Embedding(len(dicts), args['word_vec_size'], padding_idx=0)
 
         self.qemb_match = fnlayers.SeqAttnMatch(args['word_vec_size'])
 
         # Input size to RNN: word emb + question emb + manual features
-        doc_input_size = self.embedding.output_size + args['feature_num']
+#        total_embedding_size = self.embedding.output_size
+        total_embedding_size = args['word_vec_size']
+        doc_input_size = total_embedding_size + args['feature_num']
         if args['use_qemb']:
             doc_input_size += args['word_vec_size']
-        question_input_size = self.embedding.output_size
+        question_input_size = total_embedding_size
 
         cur_doc_hidden_size = doc_input_size
         cur_question_hidden_size = question_input_size
@@ -119,12 +124,16 @@ class FusionNetReader(nn.Module):
         x2_mask = torch.eq(batch.q_text, 0)
 
         # Embed both document and question
-        e_input = batch.e_text
-        x1_pos_input = self.embedding.forward(e_input)
-        x1_word_emb = x1_pos_input[:, :, :self.args['word_vec_size']]
-        q_input = torch.cat([batch.q_text.unsqueeze(-1), batch.q_feature], dim=-1)
-        x2_input = self.embedding.forward(q_input)
-        x2_word_emb = x2_input[:, :, :self.args['word_vec_size']]
+        e_input = batch.e_text[:, :, 0]
+        x1_pos_input = self.embedding(e_input)
+#        x1_word_emb = x1_pos_input[:, :, :self.args['word_vec_size']]
+        x1_word_emb = x1_pos_input
+
+#        q_input = torch.cat([batch.q_text.unsqueeze(-1), batch.q_feature], dim=-1)
+        q_input = batch.q_text
+        x2_input = self.embedding(q_input)
+#        x2_word_emb = x2_input[:, :, :self.args['word_vec_size']]
+        x2_word_emb = x2_input
 
         # Dropout on word embeddings
         if self.args['dropout_emb'] > 0:

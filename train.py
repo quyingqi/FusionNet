@@ -50,10 +50,11 @@ log.addHandler(ch)
 #tb_log_dir = os.path.join(model_folder, 'tb_logs')
 #tb_log = Logger(tb_log_dir)
 
+#if args.multi_gpu:
+#    model = torch.nn.DataParallel(model)
 if args.device >= 0:
     model.cuda(args.device)
-if args.multi_gpu:
-    model = torch.nn.DataParallel(model)
+#print(model.embedding.word_lookup_table.weight)
 
 def get_data_dict(args, pt_file):
     data = torch.load(open(pt_file, 'rb'))
@@ -71,7 +72,8 @@ log.info('[Data loaded.]')
 params = list()
 for name, param in model.named_parameters():
     log.info('%s - %s' % (name, param.size()))
-    params.append(param)
+    if param.requires_grad:
+        params.append(param)
 
 optimizer = getattr(torch.optim, args.optimizer)(params, lr=args.lr, weight_decay=args.regular_weight)
 
@@ -100,7 +102,8 @@ def train_epoch(_model, _data):
         optimizer.zero_grad()
 
         start_time = time.time()
-        loss = _model(batch)
+#        loss = _model(batch)
+        loss = torch.nn.parallel.data_parallel(_model, batch)
         end_time = time.time()
         forward_time += end_time - start_time
         loss.backward()

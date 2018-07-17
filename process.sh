@@ -1,5 +1,5 @@
 python train.py \
--word-vectors data/penny.cbow.dim300.bin \
+-word-vectors random \
 -epoch 10 \
 -batch 32 \
 -device 0 \
@@ -14,7 +14,6 @@ python train.py \
 -rnn-type lstm \
 -multi-layer last \
 -exp-name debug_test \
--multi-gpu \
 -baidu-data data/baidu_data.pt \
 -train-data data/debug_data/cross_train-1.100.pt \
 -valid-data data/debug_data/cross_valid-1.20.pt
@@ -22,3 +21,4 @@ python train.py \
 -valid-data data/cross_valid-1.pt
 -resume_snapshot saved_checkpoint/feature_cc_lr/feature_cc_lr.best.query.pre.model
 -use_qemb \
+-multi-gpu \
