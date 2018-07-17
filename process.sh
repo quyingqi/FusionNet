@@ -1,0 +1,24 @@
+python train.py \
+-word-vectors data/penny.cbow.dim300.bin \
+-epoch 10 \
+-batch 32 \
+-device 0 \
+-pos-vec-size 5 \
+-ner-vec-size 5 \
+-hidden-size 128 \
+-optimizer Adamax \
+-lr 0.005 \
+-feature_num 10 \
+-num-layers 2 \
+-brnn \
+-rnn-type lstm \
+-multi-layer last \
+-exp-name debug_test \
+-multi-gpu \
+-baidu-data data/baidu_data.pt \
+-train-data data/debug_data/cross_train-1.100.pt \
+-valid-data data/debug_data/cross_valid-1.20.pt
+-train-data data/cross_train-1.pt \
+-valid-data data/cross_valid-1.pt
+-resume_snapshot saved_checkpoint/feature_cc_lr/feature_cc_lr.best.query.pre.model
+-use_qemb \
