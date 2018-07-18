@@ -2,9 +2,10 @@ import os, sys, math, random, logging, argparse, time, json
 import utils
 
 args = utils.add_argument()
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
 
 import torch
+import torch.nn.functional as F
 #from logger import Logger
 from evaluate import evalutate
 from predict import predict_answer
@@ -50,8 +51,8 @@ log.addHandler(ch)
 #tb_log_dir = os.path.join(model_folder, 'tb_logs')
 #tb_log = Logger(tb_log_dir)
 
-#if args.multi_gpu:
-#    model = torch.nn.DataParallel(model)
+if args.multi_gpu:
+    model = torch.nn.DataParallel(model)
 if args.device >= 0:
     model.cuda(args.device)
 #print(model.embedding.word_lookup_table.weight)
@@ -81,7 +82,7 @@ global_step = 0
 
 def eval_epoch(_model, _data):
     _model.eval()
-    answer_dict_old, acc_s, acc_e, acc = predict_answer(_model, _data)
+    answer_dict_old, acc_s, acc_e, acc = predict_answer(_model.module, _data)
     q_level_p_old, char_level_f_old = evalutate(answer_dict_old)
     return q_level_p_old, char_level_f_old, acc_s, acc_e, acc
 
@@ -102,8 +103,9 @@ def train_epoch(_model, _data):
         optimizer.zero_grad()
 
         start_time = time.time()
-#        loss = _model(batch)
-        loss = torch.nn.parallel.data_parallel(_model, batch)
+        start_score, end_score = _model(batch)
+        loss = F.nll_loss(start_score, batch['start_position']) + F.nll_loss(end_score,
+                                                                          batch['end_position'])
         end_time = time.time()
         forward_time += end_time - start_time
         loss.backward()

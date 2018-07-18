@@ -6,7 +6,6 @@ import torch.nn as nn
 import fusionnet_layers as fnlayers
 from layers import Embeddings
 import numpy as np
-
 # ------------------------------------------------------------------------------
 # Network
 # ------------------------------------------------------------------------------
@@ -22,19 +21,17 @@ class FusionNetReader(nn.Module):
         fnlayers.set_my_dropout_prob(args['encoder_dropout'])
         fnlayers.set_seq_dropout(True)
 
-        '''
         self.embedding = Embeddings(word_vec_size=args['word_vec_size'],
                                     dicts=dicts,
                                     feature_dicts=feat_dicts,
                                     feature_dims=feat_dims)
-        '''
-        self.embedding = nn.Embedding(len(dicts), args['word_vec_size'], padding_idx=0)
+#        self.embedding = nn.Embedding(len(dicts), args['word_vec_size'], padding_idx=0)
 
         self.qemb_match = fnlayers.SeqAttnMatch(args['word_vec_size'])
 
         # Input size to RNN: word emb + question emb + manual features
-#        total_embedding_size = self.embedding.output_size
-        total_embedding_size = args['word_vec_size']
+        total_embedding_size = self.embedding.output_size
+#        total_embedding_size = args['word_vec_size']
         doc_input_size = total_embedding_size + args['feature_num']
         if args['use_qemb']:
             doc_input_size += args['word_vec_size']
@@ -122,18 +119,19 @@ class FusionNetReader(nn.Module):
         """
         x1_mask = torch.eq(batch.e_text[:, :, 0], 0)
         x2_mask = torch.eq(batch.q_text, 0)
+#        print('x1_mask.device = {}'.format(x1_mask.device))
 
         # Embed both document and question
-        e_input = batch.e_text[:, :, 0]
+#        e_input = batch.e_text[:, :, 0]
+        e_input = batch.e_text
+#        print('e_input.device = {}'.format(e_input.device))
+#        print('embedding.weight.data.device = {}'.format(self.embedding.word_lookup_table.weight.data.device))
         x1_pos_input = self.embedding(e_input)
-#        x1_word_emb = x1_pos_input[:, :, :self.args['word_vec_size']]
-        x1_word_emb = x1_pos_input
+        x1_word_emb = x1_pos_input[:, :, :self.args['word_vec_size']]
 
-#        q_input = torch.cat([batch.q_text.unsqueeze(-1), batch.q_feature], dim=-1)
-        q_input = batch.q_text
+        q_input = torch.cat([batch.q_text.unsqueeze(-1), batch.q_feature], dim=-1)
         x2_input = self.embedding(q_input)
-#        x2_word_emb = x2_input[:, :, :self.args['word_vec_size']]
-        x2_word_emb = x2_input
+        x2_word_emb = x2_input[:, :, :self.args['word_vec_size']]
 
         # Dropout on word embeddings
         if self.args['dropout_emb'] > 0:
@@ -202,9 +200,9 @@ class FusionNetReader(nn.Module):
 
     def loss(self, batch):
         start_score, end_score = self.score(batch)
+
         start_right_score = batch.start_position
         end_right_score = batch.end_position
-
         start_loss = self.nll_loss(start_score, start_right_score)
         end_loss = self.nll_loss(end_score, end_right_score)
 
@@ -212,7 +210,10 @@ class FusionNetReader(nn.Module):
         return loss
 
     def forward(self, batch):
-        return self.loss(batch)
+        from collections import namedtuple
+        batch = namedtuple("Batch", batch.keys())(*batch.values())
+        start_score, end_score = self.score(batch)
+        return start_score, end_score
 
     @staticmethod
     def decode(score_s, score_e, top_n=1, max_len=None):

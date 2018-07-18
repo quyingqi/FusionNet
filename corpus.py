@@ -237,9 +237,9 @@ class WebQACorpus(object):
             q_lens, e_lens, q_feature, e_feature = batch_data[4:8]
             q_keys, e_keys = batch_data[8:10]
 
-            yield Batch(q_text, e_text, start_position, end_position,
+            yield vars(Batch(q_text, e_text, start_position, end_position,
                         q_lens, e_lens, q_feature, e_feature,
-                        _batch_size, q_keys, e_keys)
+                        _batch_size, q_keys, e_keys))
 
     def next_question(self):
 
